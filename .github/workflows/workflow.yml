@@ -1,0 +1,108 @@
+name: Universal ROM Dumper
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_url:
+        description: 'ROM URL (GDrive, MediaFire, Direct)'
+        required: true
+        type: string
+      source_type:
+        description: 'Source type'
+        required: true
+        type: choice
+        options:
+          - gdrive
+          - mediafire
+          - direct
+      rom_format:
+        description: 'ROM Format'
+        required: true
+        type: choice
+        options:
+          - auto
+          - spflash
+          - fastboot
+          - ota
+          - super_dynamic
+      device_codename:
+        description: 'Device codename (e.g. x6886, gta4l)'
+        required: true
+        type: string
+      device_name:
+        description: 'Device friendly name'
+        required: false
+        type: string
+      gitgud_repo:
+        description: 'GitGud repo (owner/name)'
+        required: true
+        type: string
+      gitgud_host:
+        description: 'GitGud host'
+        required: true
+        type: string
+        default: 'https://gitgud.io'
+
+env:
+  GITGUD_TOKEN: ${{ secrets.GITGUD_TOKEN }}
+  DUMPER_AUTH_KEY: ${{ secrets.DUMPER_AUTH_KEY }}
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install all dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y             p7zip-full unzip zip curl wget aria2             liblz4-tool brotli simg2img img2simg e2fsprogs             android-sdk-libsparse-utils python3-pip             cpio gzip xz-utils zstd file             libmagic1 git
+          pip install gdown requests tqdm protobuf bsdiff4
+
+      - name: Clone tools
+        run: |
+          # AIK (Android Image Kitchen)
+          git clone --depth 1 https://github.com/osm0sis/AIK.git /tmp/AIK
+          # payload_dumper
+          git clone --depth 1 https://github.com/vm03/payload_dumper.git /tmp/payload_dumper
+          # lpunpack
+          git clone --depth 1 https://github.com/LonelyFool/lpunpack_and_lpmake.git /tmp/lpunpack
+          cd /tmp/lpunpack && make && sudo cp lpunpack lpmake /usr/local/bin/
+          # sdat2img
+          git clone --depth 1 https://github.com/xpirt/sdat2img.git /tmp/sdat2img
+          # img2sdat
+          git clone --depth 1 https://github.com/xpirt/img2sdat.git /tmp/img2sdat
+          # avbtool (from AOSP)
+          wget -q https://android.googlesource.com/platform/external/avb/+archive/refs/heads/main.tar.gz -O /tmp/avb.tar.gz
+          mkdir -p /tmp/avbtool && tar -xzf /tmp/avb.tar.gz -C /tmp/avbtool 2>/dev/null || true
+          # magiskboot
+          wget -q https://github.com/topjohnwu/Magisk/releases/download/canary/magisk-canary.apk -O /tmp/magisk.apk
+          unzip -o /tmp/magisk.apk -d /tmp/magisk
+          sudo cp /tmp/magisk/lib/x86_64/libmagiskboot.so /usr/local/bin/magiskboot 2>/dev/null ||           sudo cp /tmp/magisk/lib/arm64-v8a/libmagiskboot.so /usr/local/bin/magiskboot 2>/dev/null || true
+          chmod +x /usr/local/bin/magiskboot 2>/dev/null || true
+
+      - name: Run Universal Dumper
+        run: python3 dumper.py
+        env:
+          SOURCE_URL: ${{ github.event.inputs.source_url }}
+          SOURCE_TYPE: ${{ github.event.inputs.source_type }}
+          ROM_FORMAT: ${{ github.event.inputs.rom_format }}
+          DEVICE_CODENAME: ${{ github.event.inputs.device_codename }}
+          DEVICE_NAME: ${{ github.event.inputs.device_name }}
+          GITGUD_REPO: ${{ github.event.inputs.gitgud_repo }}
+          GITGUD_HOST: ${{ github.event.inputs.gitgud_host }}
+
+      - name: Upload artifacts backup
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rom-dump-backup
+          path: output/
+          retention-days: 1
