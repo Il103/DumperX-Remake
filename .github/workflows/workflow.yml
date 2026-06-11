@@ -80,27 +80,47 @@ jobs:
 
       - name: Clone & build tools
         run: |
-          # AIK (Android Image Kitchen) - CORRECT REPO
-          git clone --depth 1 https://github.com/osm0sis/Android-Image-Kitchen.git /tmp/AIK ||           wget -q https://github.com/osm0sis/Android-Image-Kitchen/archive/refs/heads/master.zip -O /tmp/aik.zip &&           unzip -q /tmp/aik.zip -d /tmp/AIK_extracted &&           mv /tmp/AIK_extracted/Android-Image-Kitchen-master /tmp/AIK
+          # AIK (Android Image Kitchen)
+          if ! git clone --depth 1 https://github.com/osm0sis/Android-Image-Kitchen.git /tmp/AIK 2>/dev/null; then
+            wget -q --max-redirect=5 -O /tmp/aik.zip "https://github.com/osm0sis/Android-Image-Kitchen/archive/refs/heads/master.zip"
+            mkdir -p /tmp/AIK_extracted
+            unzip -q /tmp/aik.zip -d /tmp/AIK_extracted
+            mv /tmp/AIK_extracted/Android-Image-Kitchen-master /tmp/AIK
+          fi
 
           # payload_dumper
-          git clone --depth 1 https://github.com/vm03/payload_dumper.git /tmp/payload_dumper ||           wget -q https://github.com/vm03/payload_dumper/archive/refs/heads/master.zip -O /tmp/pd.zip &&           unzip -q /tmp/pd.zip -d /tmp/pd_extracted &&           mv /tmp/pd_extracted/payload_dumper-master /tmp/payload_dumper
+          if ! git clone --depth 1 https://github.com/vm03/payload_dumper.git /tmp/payload_dumper 2>/dev/null; then
+            wget -q --max-redirect=5 -O /tmp/pd.zip "https://github.com/vm03/payload_dumper/archive/refs/heads/master.zip"
+            mkdir -p /tmp/pd_extracted
+            unzip -q /tmp/pd.zip -d /tmp/pd_extracted
+            mv /tmp/pd_extracted/payload_dumper-master /tmp/payload_dumper
+          fi
 
           # lpunpack
-          git clone --depth 1 https://github.com/LonelyFool/lpunpack_and_lpmake.git /tmp/lpunpack ||           wget -q https://github.com/LonelyFool/lpunpack_and_lpmake/archive/refs/heads/master.zip -O /tmp/lp.zip &&           unzip -q /tmp/lp.zip -d /tmp/lp_extracted &&           mv /tmp/lp_extracted/lpunpack_and_lpmake-master /tmp/lpunpack
+          if ! git clone --depth 1 https://github.com/LonelyFool/lpunpack_and_lpmake.git /tmp/lpunpack 2>/dev/null; then
+            wget -q --max-redirect=5 -O /tmp/lp.zip "https://github.com/LonelyFool/lpunpack_and_lpmake/archive/refs/heads/master.zip"
+            mkdir -p /tmp/lp_extracted
+            unzip -q /tmp/lp.zip -d /tmp/lp_extracted
+            mv /tmp/lp_extracted/lpunpack_and_lpmake-master /tmp/lpunpack
+          fi
           cd /tmp/lpunpack && make && sudo cp lpunpack lpmake /usr/local/bin/
 
           # sdat2img
-          git clone --depth 1 https://github.com/xpirt/sdat2img.git /tmp/sdat2img ||           wget -q https://github.com/xpirt/sdat2img/archive/refs/heads/master.zip -O /tmp/sd.zip &&           unzip -q /tmp/sd.zip -d /tmp/sd_extracted &&           mv /tmp/sd_extracted/sdat2img-master /tmp/sdat2img
+          if ! git clone --depth 1 https://github.com/xpirt/sdat2img.git /tmp/sdat2img 2>/dev/null; then
+            wget -q --max-redirect=5 -O /tmp/sd.zip "https://github.com/xpirt/sdat2img/archive/refs/heads/master.zip"
+            mkdir -p /tmp/sd_extracted
+            unzip -q /tmp/sd.zip -d /tmp/sd_extracted
+            mv /tmp/sd_extracted/sdat2img-master /tmp/sdat2img
+          fi
 
           # avbtool
-          wget -q https://android.googlesource.com/platform/external/avb/+archive/refs/heads/main.tar.gz -O /tmp/avb.tar.gz
+          wget -q --max-redirect=5 -O /tmp/avb.tar.gz "https://android.googlesource.com/platform/external/avb/+archive/refs/heads/main.tar.gz"
           mkdir -p /tmp/avbtool && tar -xzf /tmp/avb.tar.gz -C /tmp/avbtool 2>/dev/null || true
 
           # magiskboot
-          wget -q https://github.com/topjohnwu/Magisk/releases/download/canary/magisk-canary.apk -O /tmp/magisk.apk
+          wget -q --max-redirect=5 -O /tmp/magisk.apk "https://github.com/topjohnwu/Magisk/releases/download/canary/magisk-canary.apk"
           unzip -o /tmp/magisk.apk -d /tmp/magisk 2>/dev/null || true
-          sudo cp /tmp/magisk/lib/x86_64/libmagiskboot.so /usr/local/bin/magiskboot 2>/dev/null ||           sudo cp /tmp/magisk/lib/arm64-v8a/libmagiskboot.so /usr/local/bin/magiskboot 2>/dev/null ||           echo "magiskboot not available, using AIK only"
+          sudo cp /tmp/magisk/lib/x86_64/libmagiskboot.so /usr/local/bin/magiskboot 2>/dev/null ||           sudo cp /tmp/magisk/lib/arm64-v8a/libmagiskboot.so /usr/local/bin/magiskboot 2>/dev/null ||           echo "magiskboot not available"
 
       - name: Run Universal Dumper
         run: python3 dumper.py
