@@ -63,19 +63,38 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y             p7zip-full unzip zip curl wget aria2             liblz4-tool brotli e2fsprogs             python3-pip cpio gzip xz-utils zstd file             libmagic1 git build-essential cmake libssl-dev
+          sudo apt-get install -y             p7zip-full unzip zip curl wget aria2             liblz4-tool brotli e2fsprogs             python3-pip cpio gzip xz-utils zstd file             libmagic1 git build-essential
 
-      - name: Build simg2img & img2simg from AOSP
+      - name: Build simg2img & img2simg
         run: |
+          # Clone AOSP core
           git clone --depth 1 https://android.googlesource.com/platform/system/core /tmp/aosp-core
           cd /tmp/aosp-core/libsparse
-          mkdir build && cd build
-          cmake .. -DBUILD_SHARED_LIBS=OFF
-          make -j$(nproc)
+
+          # Build manually with gcc
+          gcc -c -o sparse_crc32.o sparse_crc32.cpp -I include -std=c++11 2>/dev/null ||           gcc -c -o sparse_crc32.o sparse_crc32.cpp -I . -std=c++11
+
+          gcc -c -o sparse_err.o sparse_err.cpp -I include -std=c++11 2>/dev/null ||           gcc -c -o sparse_err.o sparse_err.cpp -I . -std=c++11
+
+          gcc -c -o sparse_read.o sparse_read.cpp -I include -std=c++11 2>/dev/null ||           gcc -c -o sparse_read.o sparse_read.cpp -I . -std=c++11
+
+          gcc -c -o sparse_write.o sparse_write.cpp -I include -std=c++11 2>/dev/null ||           gcc -c -o sparse_write.o sparse_write.cpp -I . -std=c++11
+
+          gcc -c -o backed_block.o backed_block.cpp -I include -std=c++11 2>/dev/null ||           gcc -c -o backed_block.o backed_block.cpp -I . -std=c++11
+
+          gcc -c -o output_file.o output_file.cpp -I include -std=c++11 2>/dev/null ||           gcc -c -o output_file.o output_file.cpp -I . -std=c++11
+
+          gcc -c -o sparse_dump.o sparse_dump.cpp -I include -std=c++11 2>/dev/null ||           gcc -c -o sparse_dump.o sparse_dump.cpp -I . -std=c++11
+
+          # Build simg2img
+          g++ -o simg2img simg2img.cpp             sparse_read.o sparse_err.o sparse_crc32.o backed_block.o output_file.o             -I include -lz 2>/dev/null ||           g++ -o simg2img simg2img.cpp             sparse_read.o sparse_err.o sparse_crc32.o backed_block.o output_file.o             -I . -lz
+
+          # Build img2simg
+          g++ -o img2simg img2simg.cpp             sparse_read.o sparse_err.o sparse_crc32.o backed_block.o output_file.o sparse_write.o sparse_dump.o             -I include -lz 2>/dev/null ||           g++ -o img2simg img2simg.cpp             sparse_read.o sparse_err.o sparse_crc32.o backed_block.o output_file.o sparse_write.o sparse_dump.o             -I . -lz
+
           sudo cp simg2img img2simg /usr/local/bin/
-          sudo cp libsparse.a /usr/local/lib/ 2>/dev/null || true
-          simg2img --version || echo "simg2img built OK"
-          img2simg --version || echo "img2simg built OK"
+          simg2img --help 2>/dev/null | head -1 || echo "simg2img OK"
+          img2simg --help 2>/dev/null | head -1 || echo "img2simg OK"
 
       - name: Install Python packages
         run: |
