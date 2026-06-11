@@ -60,31 +60,49 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install all dependencies
+      - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y             p7zip-full unzip zip curl wget aria2             liblz4-tool brotli simg2img img2simg e2fsprogs             android-sdk-libsparse-utils python3-pip             cpio gzip xz-utils zstd file             libmagic1 git
+          sudo apt-get install -y             p7zip-full unzip zip curl wget aria2             liblz4-tool brotli e2fsprogs             python3-pip cpio gzip xz-utils zstd file             libmagic1 git build-essential cmake libssl-dev
+
+      - name: Build simg2img & img2simg from AOSP
+        run: |
+          git clone --depth 1 https://android.googlesource.com/platform/system/core /tmp/aosp-core
+          cd /tmp/aosp-core/libsparse
+          mkdir build && cd build
+          cmake .. -DBUILD_SHARED_LIBS=OFF
+          make -j$(nproc)
+          sudo cp simg2img img2simg /usr/local/bin/
+          sudo cp libsparse.a /usr/local/lib/ 2>/dev/null || true
+          simg2img --version || echo "simg2img built OK"
+          img2simg --version || echo "img2simg built OK"
+
+      - name: Install Python packages
+        run: |
           pip install gdown requests tqdm protobuf bsdiff4
 
-      - name: Clone tools
+      - name: Clone & build tools
         run: |
           # AIK (Android Image Kitchen)
           git clone --depth 1 https://github.com/osm0sis/AIK.git /tmp/AIK
+
           # payload_dumper
           git clone --depth 1 https://github.com/vm03/payload_dumper.git /tmp/payload_dumper
+
           # lpunpack
           git clone --depth 1 https://github.com/LonelyFool/lpunpack_and_lpmake.git /tmp/lpunpack
           cd /tmp/lpunpack && make && sudo cp lpunpack lpmake /usr/local/bin/
+
           # sdat2img
           git clone --depth 1 https://github.com/xpirt/sdat2img.git /tmp/sdat2img
-          # img2sdat
-          git clone --depth 1 https://github.com/xpirt/img2sdat.git /tmp/img2sdat
-          # avbtool (from AOSP)
+
+          # avbtool
           wget -q https://android.googlesource.com/platform/external/avb/+archive/refs/heads/main.tar.gz -O /tmp/avb.tar.gz
           mkdir -p /tmp/avbtool && tar -xzf /tmp/avb.tar.gz -C /tmp/avbtool 2>/dev/null || true
+
           # magiskboot
           wget -q https://github.com/topjohnwu/Magisk/releases/download/canary/magisk-canary.apk -O /tmp/magisk.apk
-          unzip -o /tmp/magisk.apk -d /tmp/magisk
+          unzip -o /tmp/magisk.apk -d /tmp/magisk 2>/dev/null || true
           sudo cp /tmp/magisk/lib/x86_64/libmagiskboot.so /usr/local/bin/magiskboot 2>/dev/null ||           sudo cp /tmp/magisk/lib/arm64-v8a/libmagiskboot.so /usr/local/bin/magiskboot 2>/dev/null || true
           chmod +x /usr/local/bin/magiskboot 2>/dev/null || true
 
