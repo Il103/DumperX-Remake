@@ -63,7 +63,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y             p7zip-full unzip zip curl wget aria2             liblz4-tool brotli e2fsprogs             python3-pip cpio gzip xz-utils zstd file             libmagic1 git build-essential
+          sudo apt-get install -y             p7zip-full unzip zip curl wget aria2             liblz4-tool brotli e2fsprogs             python3-pip cpio gzip xz-utils zstd file             libmagic1 git build-essential cmake
 
       - name: Build simg2img & img2simg
         run: |
@@ -96,14 +96,17 @@ jobs:
             mv /tmp/pd_extracted/payload_dumper-master /tmp/payload_dumper
           fi
 
-          # lpunpack
+          # lpunpack - uses CMake, not Makefile
           if ! git clone --depth 1 https://github.com/LonelyFool/lpunpack_and_lpmake.git /tmp/lpunpack 2>/dev/null; then
             wget -q --max-redirect=5 -O /tmp/lp.zip "https://github.com/LonelyFool/lpunpack_and_lpmake/archive/refs/heads/master.zip"
             mkdir -p /tmp/lp_extracted
             unzip -q /tmp/lp.zip -d /tmp/lp_extracted
             mv /tmp/lp_extracted/lpunpack_and_lpmake-master /tmp/lpunpack
           fi
-          cd /tmp/lpunpack && make && sudo cp lpunpack lpmake /usr/local/bin/
+          cd /tmp/lpunpack
+          mkdir -p build && cd build
+          cmake .. && make -j$(nproc)
+          sudo cp lpunpack lpmake /usr/local/bin/ 2>/dev/null ||           sudo cp /tmp/lpunpack/build/lpunpack /tmp/lpunpack/build/lpmake /usr/local/bin/ 2>/dev/null ||           echo "lpunpack build failed, continuing without it"
 
           # sdat2img
           if ! git clone --depth 1 https://github.com/xpirt/sdat2img.git /tmp/sdat2img 2>/dev/null; then
