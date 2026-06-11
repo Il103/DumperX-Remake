@@ -67,31 +67,10 @@ jobs:
 
       - name: Build simg2img & img2simg
         run: |
-          # Clone AOSP core
-          git clone --depth 1 https://android.googlesource.com/platform/system/core /tmp/aosp-core
-          cd /tmp/aosp-core/libsparse
-
-          # Build manually with gcc
-          gcc -c -o sparse_crc32.o sparse_crc32.cpp -I include -std=c++11 2>/dev/null ||           gcc -c -o sparse_crc32.o sparse_crc32.cpp -I . -std=c++11
-
-          gcc -c -o sparse_err.o sparse_err.cpp -I include -std=c++11 2>/dev/null ||           gcc -c -o sparse_err.o sparse_err.cpp -I . -std=c++11
-
-          gcc -c -o sparse_read.o sparse_read.cpp -I include -std=c++11 2>/dev/null ||           gcc -c -o sparse_read.o sparse_read.cpp -I . -std=c++11
-
-          gcc -c -o sparse_write.o sparse_write.cpp -I include -std=c++11 2>/dev/null ||           gcc -c -o sparse_write.o sparse_write.cpp -I . -std=c++11
-
-          gcc -c -o backed_block.o backed_block.cpp -I include -std=c++11 2>/dev/null ||           gcc -c -o backed_block.o backed_block.cpp -I . -std=c++11
-
-          gcc -c -o output_file.o output_file.cpp -I include -std=c++11 2>/dev/null ||           gcc -c -o output_file.o output_file.cpp -I . -std=c++11
-
-          gcc -c -o sparse_dump.o sparse_dump.cpp -I include -std=c++11 2>/dev/null ||           gcc -c -o sparse_dump.o sparse_dump.cpp -I . -std=c++11
-
-          # Build simg2img
-          g++ -o simg2img simg2img.cpp             sparse_read.o sparse_err.o sparse_crc32.o backed_block.o output_file.o             -I include -lz 2>/dev/null ||           g++ -o simg2img simg2img.cpp             sparse_read.o sparse_err.o sparse_crc32.o backed_block.o output_file.o             -I . -lz
-
-          # Build img2simg
-          g++ -o img2simg img2simg.cpp             sparse_read.o sparse_err.o sparse_crc32.o backed_block.o output_file.o sparse_write.o sparse_dump.o             -I include -lz 2>/dev/null ||           g++ -o img2simg img2simg.cpp             sparse_read.o sparse_err.o sparse_crc32.o backed_block.o output_file.o sparse_write.o sparse_dump.o             -I . -lz
-
+          # Use a standalone repo with proper Makefile
+          git clone --depth 1 https://github.com/anestisb/android-simg2img.git /tmp/simg2img-build
+          cd /tmp/simg2img-build
+          make
           sudo cp simg2img img2simg /usr/local/bin/
           simg2img --help 2>/dev/null | head -1 || echo "simg2img OK"
           img2simg --help 2>/dev/null | head -1 || echo "img2simg OK"
